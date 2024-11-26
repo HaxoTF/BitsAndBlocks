@@ -11,19 +11,20 @@ public partial class Game1
         for (int y=0; y<WRLD_HEIGHT; y++) {
             for (int x=0; x<WRLD_WIDTH; x++) {
 
-                if ( 
-                    !(x==0 || x==WRLD_WIDTH-1) &&
-                    !(y==0 || y==WRLD_HEIGHT-1)
-                )
-                { continue; }
-                
-                world[y,x] = rand.Next(1, 3);
+                int block_id = 0;
+                if (y<20) { 
+                    block_id = 1;
+                    if (rand.Next(0, 5)==1) { block_id=4; }
+                }
+                else if(y<24) { block_id=2; }
+                else if(y<25) { block_id=3; }
+                world[y,x] = block_id;
 
             }
         }
     }
 
-    bool PosInBorder(int x, int y) {
+    public bool PosInBorder(int x, int y) {
         bool hor = x>=0 && x<WRLD_WIDTH;
         bool ver = y>=0 && y<WRLD_HEIGHT;
         return hor && ver;

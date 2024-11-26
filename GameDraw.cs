@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -9,19 +8,25 @@ namespace BitsAndBlocks;
 public partial class Game1
 {
     Vector2 CamPosition = new Vector2(0, 0);
-    float txt_block_scale = 4f;
+    float txt_draw_scale = 4f;
 
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
+
+
+        // Setup for point filtering
         _spriteBatch.Begin(
             SpriteSortMode.Deferred,
             BlendState.AlphaBlend,
             SamplerState.PointClamp
         );
+
+        // self-explanatory
         DrawWorld();
 
+        // Left Top block indicator
         _spriteBatch.Draw(
             TXT_Blocks[Block.BlockIDs[curr_block].Texture],
             new Vector2(10, 10),
@@ -29,7 +34,20 @@ public partial class Game1
             Color.White,
             0f,
             Vector2.Zero,
-            Vector2.One * txt_block_scale * 2,
+            Vector2.One * txt_draw_scale * 2,
+            SpriteEffects.None,
+            0f
+        );
+
+        // Player
+        _spriteBatch.Draw(
+            TXT_Player,
+            WorldToScreenPos(PlayerPosition),
+            null,
+            Color.White,
+            0f,
+            new Vector2(4, 8),
+            Vector2.One * txt_draw_scale,
             SpriteEffects.None,
             0f
         );
@@ -42,21 +60,22 @@ public partial class Game1
     void DrawWorld()
     {
         MouseState mouse_state = Mouse.GetState();
-        Vector2 the_one_hovered = GetBlockByScreenPos(mouse_state.X, mouse_state.Y, 4f);
+        Vector2 the_one_hovered = IntVector2(ScreenToWorldPos(mouse_state.X, mouse_state.Y));
 
         for (int y=0; y<WRLD_HEIGHT; y++) {
-
-            // Do not render what's outside FOV
-            int ysp = GetBlockDrawPosY(y);
-            if (ysp+8*txt_block_scale < 0 || ysp > WIN_WIDTH) { continue; }
-
             for (int x=0; x<WRLD_WIDTH; x++) {
-
-                int xsp = GetBlockDrawPosX(x);
-                if (xsp+8*txt_block_scale < 0 || xsp > WIN_WIDTH) { continue; }
-                Vector2 true_pos = GetBlockDrawPos(x, y);
                 
+                Vector2 true_pos = WorldToScreenPos(x, y);
+
+                // Do not draw things outside FOV lol (PERFORMANCE!!!!!!!!)
+                if ( 
+                    true_pos.X + block_size * txt_draw_scale < 0 || true_pos.X > WIN_WIDTH ||
+                    true_pos.Y + block_size * txt_draw_scale < 0 || true_pos.Y > WIN_HEIGHT
+                ) { continue; }
+
                 int block_id = world[y,x];
+                if (block_id == 0) { continue; }
+
                 BlockListInfo block_info;
                 Block.BlockIDs.TryGetValue(block_id, out block_info);
 
@@ -76,7 +95,7 @@ public partial class Game1
                     block_color,
                     0f,
                     new Vector2(0, 0),
-                    Vector2.One * txt_block_scale,
+                    Vector2.One * txt_draw_scale,
                     SpriteEffects.None,
                     0f
                 );
@@ -84,40 +103,25 @@ public partial class Game1
         }
     }
 
-    int GetBlockDrawPosX(int x) {
-        float true_cam_pos_x     = CamPosition.X - WIN_WIDTH/2;
-        float screen_block_pos_x = (x-WRLD_WIDTH/2)*8*txt_block_scale;
-        return (int)(screen_block_pos_x - true_cam_pos_x);
+    // Translate world pos to screen
+    Vector2 WorldToScreenPos(float x, float y) {
+        Vector2 actual_pos = (new Vector2(x, WRLD_HEIGHT-y-1) - new Vector2(CamPosition.X, WRLD_HEIGHT-CamPosition.Y)) * block_size * txt_draw_scale;
+        actual_pos += new Vector2(WIN_WIDTH/2, WIN_HEIGHT/2);
+        actual_pos = new Vector2((int)actual_pos.X, (int)actual_pos.Y);
+        return actual_pos;
     }
+    Vector2 WorldToScreenPos(Vector2 _pos) { return WorldToScreenPos(_pos.X, _pos.Y); }
 
-    int GetBlockDrawPosY(int y) {
-        float true_cam_pos_y    = CamPosition.Y - WIN_HEIGHT/2;
-        float screen_block_pos_y = (WRLD_HEIGHT-1-y-WRLD_HEIGHT/2)*8*txt_block_scale;
-        return (int)(screen_block_pos_y - true_cam_pos_y);
-    }
 
-    // Defines where block should be drawn
-    Vector2 GetBlockDrawPos(int x, int y) {
-        return new Vector2(GetBlockDrawPosX(x), GetBlockDrawPosY(y));
+    // Translate screen pos to world
+    Vector2 ScreenToWorldPos(int x, int y) {
+        Vector2 actual_pos = ((new Vector2(x, y) - new Vector2(WIN_WIDTH/2, WIN_HEIGHT/2)) / block_size / txt_draw_scale) + new Vector2(CamPosition.X, WRLD_HEIGHT-CamPosition.Y);
+        actual_pos.Y = WRLD_HEIGHT - actual_pos.Y;
+        return actual_pos;
     }
-    Vector2 GetBlockScreenPos(Vector2 _pos, float txt_scale) {
-        return GetBlockByScreenPos((int)_pos.X, (int)_pos.Y, txt_scale);
-    }
+    Vector2 ScreenToWorldPos(Vector2 _pos) { return ScreenToWorldPos((int)_pos.X, (int)_pos.Y); }
 
-    // Get specific Block index based on eg. mouse pos
-    Vector2 GetBlockByScreenPos(int x, int y, float txt_scale) {
-        
-        // X
-        x += (int)(CamPosition.X   - ( WIN_WIDTH/2 ));
-        x  = (int)(x/(8*txt_scale) + ( WRLD_WIDTH/2 ));
 
-        // Y
-        y += (int)(CamPosition.Y - ( WIN_HEIGHT/2 ));
-        y  = WRLD_HEIGHT-1 - (int)(y/(8*txt_scale) + ( WRLD_HEIGHT/2 ));
-
-        return new Vector2(x, y);
-    }
-    Vector2 GetBlockByScreenPos(Vector2 _pos, float txt_scale) {
-        return GetBlockByScreenPos((int)_pos.X, (int)_pos.Y, txt_scale);
-    }
+    // Quick convert float values of a vector2 to ints
+    Vector2 IntVector2(Vector2 _vec2) { return new Vector2((int)_vec2.X, (int)_vec2.Y); }
 }

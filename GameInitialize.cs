@@ -16,8 +16,8 @@ public partial class Game1 {
     int WIN_HEIGHT = 720;
 
     // World Variables
-    int WRLD_WIDTH  = 100;
-    int WRLD_HEIGHT = 100;
+    int WRLD_WIDTH  = 1000;
+    int WRLD_HEIGHT = 200;
     int[,] world;
 
     // Game Controls
@@ -29,7 +29,6 @@ public partial class Game1 {
         _graphics = new GraphicsDeviceManager(this);
         _graphics.PreferredBackBufferWidth  = WIN_WIDTH;
         _graphics.PreferredBackBufferHeight = WIN_HEIGHT;
-        // _graphics.IsFullScreen = true;
         
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
@@ -39,5 +38,8 @@ public partial class Game1 {
     {
         base.Initialize();
         GenerateWorld();
+
+        PlayerPosition = BlockToPlayerPos(WRLD_WIDTH/2, 30);
+        PlayerVelocity = new Vector2(0, 0);
     }
 }
